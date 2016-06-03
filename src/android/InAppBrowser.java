@@ -19,6 +19,7 @@
 package org.apache.cordova.inappbrowser;
 
 import android.annotation.SuppressLint;
+import org.apache.cordova.inappbrowser.InAppBrowserDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.provider.Browser;
@@ -26,6 +27,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
@@ -42,6 +44,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.webkit.CookieManager;
 import android.webkit.CookieSyncManager;
 import android.webkit.HttpAuthHandler;
+import android.webkit.SslErrorHandler;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -87,6 +90,10 @@ public class InAppBrowser extends CordovaPlugin {
     private static final String CLEAR_SESSION_CACHE = "clearsessioncache";
     private static final String HARDWARE_BACK_BUTTON = "hardwareback";
     private static final String MEDIA_PLAYBACK_REQUIRES_USER_ACTION = "mediaPlaybackRequiresUserAction";
+    private static final String HTTP_METHOD = "method";
+    private static final String HTTP_METHOD_POST = "POST";
+    private static final String HTTP_METHOD_GET = "GET";
+    private static final String POST_DATA = "postdata";
 
     private InAppBrowserDialog dialog;
     private WebView inAppWebView;
@@ -95,6 +102,8 @@ public class InAppBrowser extends CordovaPlugin {
     private boolean showLocationBar = true;
     private boolean showZoomControls = true;
     private boolean openWindowHidden = false;
+    private String method = HTTP_METHOD_GET;
+    private String postdata = null;
     private boolean clearAllCache = false;
     private boolean clearSessionCache = false;
     private boolean hadwareBackButton = true;
@@ -117,7 +126,7 @@ public class InAppBrowser extends CordovaPlugin {
                 t = SELF;
             }
             final String target = t;
-            final HashMap<String, Boolean> features = parseFeature(args.optString(2));
+            final HashMap<String, Object> features = parseFeature(args.optString(2));
 
             Log.d(LOG_TAG, "target = " + target);
 
@@ -187,7 +196,7 @@ public class InAppBrowser extends CordovaPlugin {
                     }
                     // BLANK - or anything else
                     else {
-                        Log.d(LOG_TAG, "in blank");
+                        Log.d(LOG_TAG, "in blank -- FJORDAN");
                         result = showWebPage(url, features);
                     }
 
@@ -315,21 +324,33 @@ public class InAppBrowser extends CordovaPlugin {
      * @param optString
      * @return
      */
-    private HashMap<String, Boolean> parseFeature(String optString) {
+    private HashMap<String, Object> parseFeature(String optString) {
         if (optString.equals(NULL)) {
             return null;
         } else {
-            HashMap<String, Boolean> map = new HashMap<String, Boolean>();
+            HashMap<String, Object> map = new HashMap<String, Object>();
             StringTokenizer features = new StringTokenizer(optString, ",");
             StringTokenizer option;
             while(features.hasMoreElements()) {
-                option = new StringTokenizer(features.nextToken(), "=");
+                String feature = features.nextToken();
+                option = new StringTokenizer(feature, "=");
+                
                 if (option.hasMoreElements()) {
                     String key = option.nextToken();
+                    
+                    if (key.equalsIgnoreCase(HTTP_METHOD)) {
+                        map.put(key, option.nextToken());
+                        
+                    } else if (key.equalsIgnoreCase(POST_DATA)) {
+                        map.put(key, feature.substring((key + "=").length()));
+                        
+                    } else {
                     Boolean value = option.nextToken().equals("no") ? Boolean.FALSE : Boolean.TRUE;
                     map.put(key, value);
+                    }
                 }
             }
+            Log.d(LOG_TAG, "Features = " + map);
             return map;
         }
     }
@@ -471,7 +492,7 @@ public class InAppBrowser extends CordovaPlugin {
      * @param url the url to load.
      * @param features jsonObject
      */
-    public String showWebPage(final String url, HashMap<String, Boolean> features) {
+    public String showWebPage(final String url, HashMap<String, Object> features) {
         // Determine if we should hide the location bar.
         showLocationBar = true;
         showZoomControls = true;
@@ -479,35 +500,48 @@ public class InAppBrowser extends CordovaPlugin {
         mediaPlaybackRequiresUserGesture = false;
 
         if (features != null) {
-            Boolean show = features.get(LOCATION);
+            Boolean show = (Boolean) features.get(LOCATION);
             if (show != null) {
                 showLocationBar = show.booleanValue();
             }
-            Boolean zoom = features.get(ZOOM);
+            Boolean zoom = (Boolean) features.get(ZOOM);
             if (zoom != null) {
                 showZoomControls = zoom.booleanValue();
             }
-            Boolean hidden = features.get(HIDDEN);
+            Boolean hidden = (Boolean) features.get(HIDDEN);
             if (hidden != null) {
                 openWindowHidden = hidden.booleanValue();
             }
-            Boolean hardwareBack = features.get(HARDWARE_BACK_BUTTON);
+            Boolean hardwareBack = (Boolean) features.get(HARDWARE_BACK_BUTTON);
             if (hardwareBack != null) {
                 hadwareBackButton = hardwareBack.booleanValue();
             }
-            Boolean mediaPlayback = features.get(MEDIA_PLAYBACK_REQUIRES_USER_ACTION);
+            Boolean mediaPlayback = (Boolean) features.get(MEDIA_PLAYBACK_REQUIRES_USER_ACTION);
             if (mediaPlayback != null) {
                 mediaPlaybackRequiresUserGesture = mediaPlayback.booleanValue();
             }
-            Boolean cache = features.get(CLEAR_ALL_CACHE);
+            Boolean cache = (Boolean) features.get(CLEAR_ALL_CACHE);
             if (cache != null) {
                 clearAllCache = cache.booleanValue();
             } else {
-                cache = features.get(CLEAR_SESSION_CACHE);
+                cache = (Boolean) features.get(CLEAR_SESSION_CACHE);
                 if (cache != null) {
                     clearSessionCache = cache.booleanValue();
                 }
             }
+            
+            method = (String) features.get(HTTP_METHOD);            
+            postdata = null;
+            if (method == null) {
+                method = HTTP_METHOD_GET;
+        }
+            Log.d(LOG_TAG, "ShowWebPage: method = " + method);
+
+            if (method != null && method.equalsIgnoreCase(HTTP_METHOD_POST)) {
+                postdata = (String) features.get(POST_DATA);
+                Log.d(LOG_TAG, "ShowWebPage: postdata = (method != null && method = POST)");
+            }
+            Log.d(LOG_TAG, "ShowWebPage: postdata = " + postdata);
         }
 
         final CordovaWebView thatWebView = this.webView;
@@ -686,6 +720,8 @@ public class InAppBrowser extends CordovaPlugin {
                     settings.setDatabaseEnabled(true);
                 }
                 settings.setDomStorageEnabled(true);
+                String userAgent = settings.getUserAgentString();
+                settings.setUserAgentString(userAgent + " ASPA");
 
                 if (clearAllCache) {
                     CookieManager.getInstance().removeAllCookie();
@@ -693,7 +729,15 @@ public class InAppBrowser extends CordovaPlugin {
                     CookieManager.getInstance().removeSessionCookie();
                 }
 
+                if (method.equalsIgnoreCase(HTTP_METHOD_POST) && postdata != null) {
+                    Log.d(LOG_TAG, "ShowWebPage: POST URL = " + url);
+                    inAppWebView.postUrl(url, postdata.getBytes());
+                    
+                } else {
+                    Log.d(LOG_TAG, "ShowWebPage: LOAD URL = " + url);
                 inAppWebView.loadUrl(url);
+                }
+
                 inAppWebView.setId(Integer.valueOf(6));
                 inAppWebView.getSettings().setLoadWithOverviewMode(true);
                 inAppWebView.getSettings().setUseWideViewPort(true);
@@ -953,5 +997,122 @@ public class InAppBrowser extends CordovaPlugin {
             // By default handle 401 like we'd normally do!
             super.onReceivedHttpAuthRequest(view, handler, host, realm);
         }
+
+        /**
+         * Se añade para poder cargar la página incluso con error de certificado
+         */
+		@Override
+		public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+			handler.proceed();
+		}
+
+		@Override
+		public void onLoadResource(WebView view, String url) {
+			if(url.contains("closeWebView")){
+                Log.d(LOG_TAG,"closeWebView");
+                closeDialog();
+            }
+            else if(url.contains("errorWebView")){
+                Log.d(LOG_TAG,"errorWebView");
+                parseErrorWebView(url);
+            }
+            // Reserva creada con exito
+            else if (url.contains("quoteOk")){
+                Log.d(LOG_TAG,"quoteOk");
+                parseQuoteOk(url);
+            }
+            else if (url.contains("cancelledOk")){
+                Log.d(LOG_TAG,"cancelledOk");
+                parseCancelledOk(url);
+            }
+		}           
+    }
+    
+    /**
+     * Parsea los datos de un error en el acceso a Chauntry.
+     * @param url
+     */
+    private void parseErrorWebView(final String url) {
+        Log.d(LOG_TAG, "parseErrorWebView: " + url);
+        //http://127.0.0.1/errorWebView__No%20se%20puede%20reservar%20para%20hoy%20o%20una%20fecha%20en%20el%20pasado.js
+        String message = url.substring(0, url.length() - 3);
+        String parts[] = message.split("__");
+        // Split:
+        // 0 - Path: http://127.0.0.1/errorWebView
+        // 1 - Message: No%20se%20puede%20reservar%20para%20hoy%20o%20una%20fecha%20en%20el%20pasado
+        // System.out.println("FJORDAN: Mensaje: " + parts[1]);
+        closeDialog();
+        
+        StringBuffer sb = new StringBuffer();
+        sb.append("javascript:GestorResParking.mostrarError('");
+        sb.append(parts[1]);
+        sb.append("');");
+        this.webView.sendJavascript(sb.toString()); //Llamada al callback desde el plugin
+        }
+    /**
+     * Parsea los datos de la reserva e invoca al webview para que lo guarde
+     * @param url
+     */
+    private void parseQuoteOk(String url){
+        Log.d(LOG_TAG, "parseQuoteOK: " + url);
+        // http://127.0.0.1/quoteOk__fernando.jordan@connectis-ict.es__A0590__2014-02-19T18:59:00Z__2014-02-20T18:59:00Z__MAD1__MAD2__%201,00%20%E2%82%AC.js
+        url = url.substring(0, url.length()-3);
+        // url = http://127.0.0.1/quoteOk__fernando.jordan@connectis-ict.es__A0590__2014-02-19T18:59:00Z__2014-02-20T18:59:00Z__MAD8__MAD4__MAD2__%201,00%20%E2%82%AC
+        String parts[] = url.split("__");
+        // Split:
+        // 0 - Path: 			 http://127.0.0.1/quoteOk
+        // 1 - Mail: 			 fernando.jordan@connectis-ict.es
+        // 2 - Reference: 		 A0590
+        // 3 - Date In: 		 2014-02-19T18:59:00Z
+        // 4 - Date Out: 		 2014-02-20T18:59:00Z
+        // 5 - ParkingId: 		 MAD8
+        // 6 - Terminal:         MAD4
+        // 7 - AirPort: 		 MAD2
+        // 8 - Cost: 			 %201,00%20%E2%82%AC
+        String mail      = parts[1];
+        String reference = parts[2]; // Localizador
+        String dateIn    = parts[3];
+        String dateOut   = parts[4];
+        String parkingId = parts[5];
+        String term      = parts[6]; // RES_NAME ????
+        String airport   = parts[7];
+        String cost      = parts[8];
+        
+        
+        StringBuffer cb = new StringBuffer();
+        cb.append("javascript:GestorResParking.guardarReserva('");
+        cb.append(mail).append("','");
+        cb.append(reference).append("','");
+        cb.append(dateIn).append("','");
+        cb.append(dateOut).append("','");
+        cb.append(parkingId).append("','");
+        cb.append(term).append("','");
+        cb.append(airport).append("','");
+        cb.append(cost);
+        cb.append("');");
+        this.webView.sendJavascript(cb.toString()); //Llamada al callback desde el plugin
+        closeDialog();
+    }
+    
+    /**
+     * Parsea los datos de la cancelacion e invoca al webview para que la borre
+     * @param url
+     */
+    private void parseCancelledOk(String url){
+        Log.d(LOG_TAG, "parseCancelledOk: " + url);
+        url = url.substring(0, url.length()-3);
+        String parts[]   = url.split("__");
+        String mail      = parts[1];
+        String reference = parts[2];
+        String parkingId = parts[3];
+        
+        StringBuffer cb = new StringBuffer();
+        cb.append("javascript:GestorResParking.cancelarReserva('");
+        cb.append(mail).append("','");
+        cb.append(reference).append("','");
+        cb.append(parkingId);
+        cb.append("');");
+        this.webView.sendJavascript(cb.toString()); //Llamada al callback desde el plugin
+        closeDialog();
     }
 }

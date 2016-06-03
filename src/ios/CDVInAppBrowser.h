@@ -62,6 +62,8 @@
 @property (nonatomic, assign) BOOL suppressesincrementalrendering;
 @property (nonatomic, assign) BOOL hidden;
 @property (nonatomic, assign) BOOL disallowoverscroll;
+@property (nonatomic, copy) NSString* method;
+@property (nonatomic, copy) NSString* postdata;
 
 + (CDVInAppBrowserOptions*)parseOptions:(NSString*)options;
 
@@ -95,6 +97,7 @@
 @property (nonatomic) NSURL* currentURL;
 
 - (void)close;
+- (void)postTo:(NSURL *)url body:(NSString *)postdata;
 - (void)navigateTo:(NSURL*)url;
 - (void)showLocationBar:(BOOL)show;
 - (void)showToolBar:(BOOL)show : (NSString *) toolbarPosition;
