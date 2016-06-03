@@ -195,7 +195,11 @@
         self.inAppBrowserViewController.webView.suppressesIncrementalRendering = browserOptions.suppressesincrementalrendering;
     }
 
+    if ([browserOptions.method isEqualToString:@"POST"]) {
+        [self.inAppBrowserViewController postTo:url body:browserOptions.postdata];
+    } else {
     [self.inAppBrowserViewController navigateTo:url];
+    }
     if (!browserOptions.hidden) {
         [self show:nil];
     }
@@ -363,6 +367,10 @@
 - (BOOL)webView:(UIWebView*)theWebView shouldStartLoadWithRequest:(NSURLRequest*)request navigationType:(UIWebViewNavigationType)navigationType
 {
     NSURL* url = request.URL;
+    
+    NSString *urlStr = url.absoluteString;
+    NSLog(@"webView:shouldStartLoadWithRequest:navigationType: Load is %@", urlStr);
+    
     BOOL isTopLevelNavigation = [request.URL isEqual:[request mainDocumentURL]];
 
     // See if the url uses the 'gap-iab' protocol. If so, the host should be the id of a callback to execute,
@@ -397,6 +405,30 @@
         [self openInSystem:url];
         return NO;
     }
+    
+    else if ([[url scheme] isEqualToString:@"js2ios"]) {
+        //Call native functions
+        if ([urlStr rangeOfString:@"closeWebView"].location != NSNotFound) {
+            NSLog(@"closeWebview");
+            
+            [self close:nil];
+            
+        } else if ([urlStr rangeOfString:@"errorWebView__"].location != NSNotFound) {
+            NSLog(@"errorWebView");
+            [self errorWebView:urlStr];
+            
+        } else if ([urlStr rangeOfString:@"quoteOk__"].location != NSNotFound) {
+            NSLog(@"quoteOk");
+            [self quoteOk:urlStr];
+            
+        } else if ([urlStr rangeOfString:@"cancelledOk__"].location != NSNotFound) {
+            NSLog(@"cancelledOk");
+            [self cancelledOk:urlStr];
+        }
+        return NO;
+        
+    }
+    
     else if ((self.callbackId != nil) && isTopLevelNavigation) {
         // Send a loadstart event for each top-level navigation (includes redirects).
         CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
@@ -407,6 +439,63 @@
     }
 
     return YES;
+}
+
+- (void)errorWebView:(NSString*)url
+{
+    // NSString *res = [url substringToIndex:url.length-3];
+    NSString* res = [NSString stringWithFormat:@"%@", url];
+    NSLog(@"Resultado: %@", res);
+    
+    NSArray* parts = [res componentsSeparatedByString:@"__"];
+    NSString* message = parts[1];
+    
+    NSString* cb = [NSString stringWithFormat:@"GestorResParking.mostrarError('%@');", message];
+    NSLog(@"%@", cb);
+    
+    [self close:nil];
+    [self.inAppBrowserViewController.webView stringByEvaluatingJavaScriptFromString:cb];
+}
+
+- (void)quoteOk:(NSString*)url
+{
+    // NSString *res = [url substringToIndex:url.length-3];
+    NSString* res = [NSString stringWithFormat:@"%@", url];
+    NSLog(@"Resultado: %@", res);
+    
+    NSArray* parts = [res componentsSeparatedByString:@"__"];
+    NSString* mail = parts[1];
+    NSString* reference = parts[2];
+    NSString* dateIn = parts[3];
+    NSString* dateOut = parts[4];
+    NSString* parkingId = parts[5];
+    NSString* term = parts[6];
+    NSString* airport = parts[7];
+    NSString* cost = parts[8];
+    
+    NSString* cb = [NSString stringWithFormat:@"GestorResParking.guardarReserva('%@','%@','%@','%@','%@','%@','%@','%@');", mail, reference, dateIn, dateOut, parkingId, term, airport, cost];
+    
+    NSLog(@"%@", cb);
+    
+    [self.inAppBrowserViewController.webView stringByEvaluatingJavaScriptFromString:cb];
+    [self close:nil];
+}
+
+- (void)cancelledOk:(NSString*)url
+{
+    NSLog(@"Cancelada: %@", url);
+    
+    NSArray* parts = [url componentsSeparatedByString:@"__"];
+    NSString* mail = parts[1];
+    NSString* reference = parts[2];
+    NSString* parkingId = parts[3];
+    
+    NSString* cb = [NSString stringWithFormat:@"GestorResParking.cancelarReserva('%@','%@','%@');", mail, reference, parkingId];
+    
+    NSLog(@"%@", cb);
+    
+    [self.inAppBrowserViewController.webView stringByEvaluatingJavaScriptFromString:cb];
+    [self close:nil];
 }
 
 - (void)webViewDidStartLoad:(UIWebView*)theWebView
@@ -780,6 +869,27 @@
     });
 }
 
+- (void)postTo:(NSURL *)url body:(NSString *)postdata
+{
+    NSData *body = [postdata dataUsingEncoding:NSUTF8StringEncoding allowLossyConversion:YES];
+    
+    NSMutableURLRequest *request = [[NSMutableURLRequest alloc] init];
+    [request setURL:url];
+    [request setHTTPMethod:@"POST"];
+    [request setHTTPBody:body];
+    
+    if (_userAgentLockToken != 0) {
+        [self.webView loadRequest:request];
+    } else {
+        __weak CDVInAppBrowserViewController* weakSelf = self;
+        [CDVUserAgentUtil acquireLock:^(NSInteger lockToken) {
+            _userAgentLockToken = lockToken;
+            [CDVUserAgentUtil setUserAgent:_userAgent lockToken:lockToken];
+            [weakSelf.webView loadRequest:request];
+        }];
+    }
+}
+
 - (void)navigateTo:(NSURL*)url
 {
     NSURLRequest* request = [NSURLRequest requestWithURL:url];
@@ -952,6 +1062,9 @@
         self.suppressesincrementalrendering = NO;
         self.hidden = NO;
         self.disallowoverscroll = NO;
+        
+        self.method = @"GET";
+        self.postdata = nil;
     }
 
     return self;
@@ -964,9 +1077,16 @@
     // NOTE: this parsing does not handle quotes within values
     NSArray* pairs = [options componentsSeparatedByString:@","];
 
+    NSNumberFormatter* numberFormatter = [[NSNumberFormatter alloc] init];
+    [numberFormatter setAllowsFloats:YES];
+
     // parse keys and values, set the properties
     for (NSString* pair in pairs) {
         NSArray* keyvalue = [pair componentsSeparatedByString:@"="];
+
+        if ([keyvalue count] > 2 && [keyvalue[0] isEqualToString:@"postdata"]) {
+            keyvalue = @[ @"postdata", [pair substringFromIndex:9] ];
+        }
 
         if ([keyvalue count] == 2) {
             NSString* key = [[keyvalue objectAtIndex:0] lowercaseString];
@@ -974,8 +1094,6 @@
             NSString* value_lc = [value lowercaseString];
 
             BOOL isBoolean = [value_lc isEqualToString:@"yes"] || [value_lc isEqualToString:@"no"];
-            NSNumberFormatter* numberFormatter = [[NSNumberFormatter alloc] init];
-            [numberFormatter setAllowsFloats:YES];
             BOOL isNumber = [numberFormatter numberFromString:value_lc] != nil;
 
             // set the property according to the key name

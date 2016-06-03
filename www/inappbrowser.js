@@ -26,17 +26,21 @@
         return;
     }
 
-    var exec = require('cordova/exec');
-    var channel = require('cordova/channel');
+    var exec         = require('cordova/exec');
+    var channel      = require('cordova/channel');
     var modulemapper = require('cordova/modulemapper');
-    var urlutil = require('cordova/urlutil');
+    var urlutil      = require('cordova/urlutil');
 
     function InAppBrowser() {
        this.channels = {
-            'loadstart': channel.create('loadstart'),
-            'loadstop' : channel.create('loadstop'),
+            'loadstart' : channel.create('loadstart'),
+            'loadstop'  : channel.create('loadstop'),
             'loaderror' : channel.create('loaderror'),
-            'exit' : channel.create('exit')
+            'exit'      : channel.create('exit'),
+            /** Mensajes personalizados para la gestion del Parking. */
+            'parkingShowError' : channel.create('parkingShowError'),
+            'parkingSave'      : channel.create('parkingSave'),
+            'parkingCancel'    : channel.create('parkingCancel')
        };
     }
 
