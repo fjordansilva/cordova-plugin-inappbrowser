@@ -409,9 +409,9 @@
     else if ([[url scheme] isEqualToString:@"js2ios"]) {
         //Call native functions
         if ([urlStr rangeOfString:@"closeWebView"].location != NSNotFound) {
-            NSLog(@"closeWebview");
-            
-            [self close:nil];
+            NSLog(@"closeWebview");            
+            // [self close:nil];
+            [self closeWebView:urlStr];
             
         } else if ([urlStr rangeOfString:@"errorWebView__"].location != NSNotFound) {
             NSLog(@"errorWebView");
@@ -441,23 +441,45 @@
     return YES;
 }
 
-- (void)errorWebView:(NSString*)url
+- (void)closeWebView:(NSString *)url {
+    NSString* res = [NSString stringWithFormat:@"%@", url];
+    NSLog(@"Resultado: %@", res);
+
+    // Se lanza el evento
+    if (self.callbackId != nil) {
+        NSString* event = @"parkingClose";
+        
+        // Parametros ...
+        NSDictionary *dict = @{
+                               @"type"      : event,
+                               @"url"       : url
+                               };
+        NSLog(@"%@", dict);
+        
+        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
+        // [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
+        
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
+    }
+}
+
+- (void)errorWebView:(NSString *)url
 {
     // NSString *res = [url substringToIndex:url.length-3];
     NSString* res = [NSString stringWithFormat:@"%@", url];
     NSLog(@"Resultado: %@", res);
-    
-    NSArray* parts = [res componentsSeparatedByString:@"__"];
-    NSString* message = parts[1];
-    
-    // NSString* cb = [NSString stringWithFormat:@"GestorResParking.mostrarError('%@');", message];
-    // NSLog(@"%@", cb);
-    
-    // Cierre del browser
-    [self close:nil];
-    
+        
     // Se lanza el evento
     if (self.callbackId != nil) {
+        NSArray* parts = [res componentsSeparatedByString:@"__"];
+        NSString* message = parts[1];
+    
+        // NSString* cb = [NSString stringWithFormat:@"GestorResParking.mostrarError('%@');", message];
+        // NSLog(@"%@", cb);
+    
+        // Cierre del browser
+        // [self close:nil];
+
         NSString* event = @"parkingShowError";
         
         // Parametros ...
@@ -469,8 +491,7 @@
         NSLog(@"%@", dict);
         
         
-        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
-                                                      messageAsDictionary:dict];
+        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
         // [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
         
         [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
@@ -484,21 +505,21 @@
     // NSString *res = [url substringToIndex:url.length-3];
     NSString* res = [NSString stringWithFormat:@"%@", url];
     NSLog(@"Resultado: %@", res);
-    
-    NSArray* parts = [res componentsSeparatedByString:@"__"];
-    NSString* mail      = parts[1];
-    NSString* reference = parts[2];
-    NSString* dateIn    = parts[3];
-    NSString* dateOut   = parts[4];
-    NSString* parkingId = parts[5];
-    NSString* term      = parts[6];
-    NSString* airport   = parts[7];
-    NSString* cost      = parts[8];
-    
-    // NSString* cb = [NSString stringWithFormat:@"GestorResParking.guardarReserva('%@','%@','%@','%@','%@','%@','%@','%@');", mail, reference, dateIn, dateOut, parkingId, term, airport, cost];
-    
+        
     // Se lanza el evento
     if (self.callbackId != nil) {
+        NSArray* parts = [res componentsSeparatedByString:@"__"];
+        NSString* mail      = parts[1];
+        NSString* reference = parts[2];
+        NSString* dateIn    = parts[3];
+        NSString* dateOut   = parts[4];
+        NSString* parkingId = parts[5];
+        NSString* term      = parts[6];
+        NSString* airport   = parts[7];
+        NSString* cost      = parts[8];
+    
+        // NSString* cb = [NSString stringWithFormat:@"GestorResParking.guardarReserva('%@','%@','%@','%@','%@','%@','%@','%@');", mail, reference, dateIn, dateOut, parkingId, term, airport, cost];
+    
         NSString* event = @"parkingSave";
         NSString* url = [self.inAppBrowserViewController.currentURL absoluteString];
         
@@ -518,32 +539,31 @@
         NSLog(@"%@", dict);
         
     
-        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
-                                                      messageAsDictionary:dict];
+        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
         // [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
     
         [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
     }
     
     // [self.inAppBrowserViewController.webView stringByEvaluatingJavaScriptFromString:cb];
-    [self close:nil];
+    // [self close:nil];
 }
 
 - (void)cancelledOk:(NSString*)url
 {
-    NSLog(@"Cancelada: %@", url);
-    
-    NSArray* parts = [url componentsSeparatedByString:@"__"];
-    NSString* mail      = parts[1];
-    NSString* reference = parts[2];
-    NSString* parkingId = parts[3];
-    
-    // NSString* cb = [NSString stringWithFormat:@"GestorResParking.cancelarReserva('%@','%@','%@');", mail, reference, parkingId];
-    
-    // NSLog(@"%@", cb);
+    NSString* res = [NSString stringWithFormat:@"%@", url];
+    NSLog(@"Resultado: %@", res);
     
     // Se lanza el evento
     if (self.callbackId != nil) {
+        NSArray* parts = [res componentsSeparatedByString:@"__"];
+        NSString* mail      = parts[1];
+        NSString* reference = parts[2];
+        NSString* parkingId = parts[3];
+    
+        // NSString* cb = [NSString stringWithFormat:@"GestorResParking.cancelarReserva('%@','%@','%@');", mail, reference, parkingId];
+        // NSLog(@"%@", cb);
+
         NSString* event = @"parkingCancel";
         
         // Parametros ...
@@ -556,15 +576,14 @@
                                };
         NSLog(@"%@", dict);
         
-        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
-                                                      messageAsDictionary:dict];
+        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
         // [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
     
         [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
     }
     
     // [self.inAppBrowserViewController.webView stringByEvaluatingJavaScriptFromString:cb];
-    [self close:nil];
+    // [self close:nil];
 }
 
 - (void)webViewDidStartLoad:(UIWebView*)theWebView

@@ -37,10 +37,16 @@
             'loadstop'  : channel.create('loadstop'),
             'loaderror' : channel.create('loaderror'),
             'exit'      : channel.create('exit'),
+
             /** Mensajes personalizados para la gestion del Parking. */
+            /** 1. Cancelar. Cerrar navegador. */
+            'parkingClose'     : channel.create('parkingClose'),
+            /** 2. Mostrar error. */
             'parkingShowError' : channel.create('parkingShowError'),
-            'parkingSave'      : channel.create('parkingSave'),
-            'parkingCancel'    : channel.create('parkingCancel')
+            /** 3. Crear nueva reserva. */
+            'parkingSave'      : channel.create('parkingSave'),  
+            /** 4. Cancelar una reserva creada. */
+            'parkingCancel'    : channel.create('parkingCancel') 
        };
     }
 
