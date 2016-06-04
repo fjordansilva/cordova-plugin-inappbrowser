@@ -471,60 +471,61 @@
         
     // Se lanza el evento
     if (self.callbackId != nil) {
-        NSArray* parts = [res componentsSeparatedByString:@"__"];
-        NSString* message = parts[1];
-    
-        // NSString* cb = [NSString stringWithFormat:@"GestorResParking.mostrarError('%@');", message];
-        // NSLog(@"%@", cb);
-    
-        // Cierre del browser
-        // [self close:nil];
-
         NSString* event = @"parkingShowError";
-        
-        // Parametros ...
-        NSDictionary *dict = @{
+
+        NSArray* parts = [res componentsSeparatedByString:@"__"];
+        if (parts.count == 2) {
+            NSString* message = parts[1];
+                
+            // Parametros ...
+            NSDictionary *dict = @{
+                               @"status"    : @"ok",
                                @"type"      : event,
                                @"url"       : url,
                                @"message"   : message
                                };
-        NSLog(@"%@", dict);
+            NSLog(@"%@", dict);
         
+            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];        
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
+        } else {
+            // Parametros ...
+            NSDictionary *dict = @{
+                               @"status"    : @"error",
+                               @"type"      : event,
+                               @"url"       : url
+                               };
+            NSLog(@"%@", dict);
         
-        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
-        // [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
-        
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
-    }
-    
-    // [self.inAppBrowserViewController.webView stringByEvaluatingJavaScriptFromString:cb];
+            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dict];        
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
+        }
+    }    
 }
 
 - (void)quoteOk:(NSString*)url
 {
-    // NSString *res = [url substringToIndex:url.length-3];
     NSString* res = [NSString stringWithFormat:@"%@", url];
     NSLog(@"Resultado: %@", res);
         
     // Se lanza el evento
     if (self.callbackId != nil) {
-        NSArray* parts = [res componentsSeparatedByString:@"__"];
-        NSString* mail      = parts[1];
-        NSString* reference = parts[2];
-        NSString* dateIn    = parts[3];
-        NSString* dateOut   = parts[4];
-        NSString* parkingId = parts[5];
-        NSString* term      = parts[6];
-        NSString* airport   = parts[7];
-        NSString* cost      = parts[8];
-    
-        // NSString* cb = [NSString stringWithFormat:@"GestorResParking.guardarReserva('%@','%@','%@','%@','%@','%@','%@','%@');", mail, reference, dateIn, dateOut, parkingId, term, airport, cost];
-    
         NSString* event = @"parkingSave";
-        NSString* url = [self.inAppBrowserViewController.currentURL absoluteString];
-        
-        // Parametros ...
-        NSDictionary *dict = @{
+
+        NSArray* parts = [res componentsSeparatedByString:@"__"];
+        if (parts.count == 9) {
+            NSString* mail      = parts[1];
+            NSString* reference = parts[2];
+            NSString* dateIn    = parts[3];
+            NSString* dateOut   = parts[4];
+            NSString* parkingId = parts[5];
+            NSString* term      = parts[6];
+            NSString* airport   = parts[7];
+            NSString* cost      = parts[8];
+                                
+            // Parametros ...
+            NSDictionary *dict = @{
+                               @"status"    : @"ok",
                                @"type"      : event,
                                @"url"       : url,
                                @"mail"      : mail,
@@ -536,17 +537,24 @@
                                @"airport"   : airport,
                                @"cost"      : cost
                                };
-        NSLog(@"%@", dict);
+            NSLog(@"%@", dict);
         
-    
-        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
-        // [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
-    
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
+            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
+            
+        } else {
+            // Parametros ...
+            NSDictionary *dict = @{
+                               @"status"    : @"error",
+                               @"type"      : event,
+                               @"url"       : url
+                               };
+            NSLog(@"%@", dict);
+        
+            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dict];
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
+        }
     }
-    
-    // [self.inAppBrowserViewController.webView stringByEvaluatingJavaScriptFromString:cb];
-    // [self close:nil];
 }
 
 - (void)cancelledOk:(NSString*)url
@@ -556,34 +564,40 @@
     
     // Se lanza el evento
     if (self.callbackId != nil) {
-        NSArray* parts = [res componentsSeparatedByString:@"__"];
-        NSString* mail      = parts[1];
-        NSString* reference = parts[2];
-        NSString* parkingId = parts[3];
-    
-        // NSString* cb = [NSString stringWithFormat:@"GestorResParking.cancelarReserva('%@','%@','%@');", mail, reference, parkingId];
-        // NSLog(@"%@", cb);
-
         NSString* event = @"parkingCancel";
-        
-        // Parametros ...
-        NSDictionary *dict = @{
+
+        NSArray* parts = [res componentsSeparatedByString:@"__"];
+        if (parts.count == 4) {
+            NSString* mail      = parts[1];
+            NSString* reference = parts[2];
+            NSString* parkingId = parts[3];
+
+            // Parametros ...
+            NSDictionary *dict = @{
+                               @"status"    : @"ok",
                                @"type"      : event,
                                @"url"       : url,
                                @"mail"      : mail,
                                @"reference" : reference,
                                @"parkingId" : parkingId
                                };
-        NSLog(@"%@", dict);
+            NSLog(@"%@", dict);
         
-        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
-        // [pluginResult setKeepCallback:[NSNumber numberWithBool:YES]];
-    
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
+            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];    
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
+        } else {
+            // Parametros ...
+            NSDictionary *dict = @{
+                               @"status"    : @"error",
+                               @"type"      : event,
+                               @"url"       : url
+                               };
+            NSLog(@"%@", dict);
+        
+            CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dict];    
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
+        }
     }
-    
-    // [self.inAppBrowserViewController.webView stringByEvaluatingJavaScriptFromString:cb];
-    // [self close:nil];
 }
 
 - (void)webViewDidStartLoad:(UIWebView*)theWebView
