@@ -19,7 +19,7 @@
 -->
 
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
-           id="connectis-plugin-inappbrowser"
+           id="es.connectis.cordova.inappbrowser"
       version="1.4.0">
 
     <name>InAppBrowser</name>
