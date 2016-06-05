@@ -1,24 +1,17 @@
 {
-  "name": "cordova-plugin-inappbrowser",
-  "version": "1.4.1-dev",
-  "description": "Cordova InAppBrowser Plugin",
+  "name": "es.connectis.cordova.inappbrowser",
+  "version": "1.4.0",
+  "description": "Connectis - Cordova InAppBrowser Plugin",
   "cordova": {
-    "id": "cordova-plugin-inappbrowser",
+    "id": "es.connectis.cordova.inappbrowser",
     "platforms": [
       "android",
-      "amazon-fireos",
-      "ubuntu",
-      "ios",
-      "wp7",
-      "wp8",
-      "windows8",
-      "windows",
-      "firefoxos"
+      "ios"
     ]
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/apache/cordova-plugin-inappbrowser"
+    "url": "https://github.com/fjordansilva/cordova-plugin-inappbrowser"
   },
   "keywords": [
     "cordova",
@@ -28,14 +21,7 @@
     "inappbrowser",
     "ecosystem:cordova",
     "cordova-android",
-    "cordova-amazon-fireos",
-    "cordova-ubuntu",
-    "cordova-ios",
-    "cordova-wp7",
-    "cordova-wp8",
-    "cordova-windows8",
-    "cordova-windows",
-    "cordova-firefoxos"
+    "cordova-ios"
   ],
   "scripts": {
     "test": "npm run jshint",
