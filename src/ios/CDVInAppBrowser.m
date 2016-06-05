@@ -451,6 +451,7 @@
         
         // Parametros ...
         NSDictionary *dict = @{
+                               @"status"    : @"ok",
                                @"type"      : event,
                                @"url"       : url
                                };
@@ -541,7 +542,7 @@
         
             CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
             [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
-            
+
         } else {
             // Parametros ...
             NSDictionary *dict = @{
