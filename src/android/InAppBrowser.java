@@ -86,6 +86,12 @@ public class InAppBrowser extends CordovaPlugin {
     private static final String LOAD_START_EVENT = "loadstart";
     private static final String LOAD_STOP_EVENT = "loadstop";
     private static final String LOAD_ERROR_EVENT = "loaderror";
+    // Custom events 
+    private static final String PARKING_CLOSE_EVENT      = "parkingClose";
+    private static final String PARKING_SHOW_ERROR_EVENT = "parkingShowError";
+    private static final String PARKING_SAVE_EVENT       = "parkingSave";
+    private static final String PARKING_CANCEL_EVENT     = "parkingCancel";
+
     private static final String CLEAR_ALL_CACHE = "clearcache";
     private static final String CLEAR_SESSION_CACHE = "clearsessioncache";
     private static final String HARDWARE_BACK_BUTTON = "hardwareback";
@@ -1010,7 +1016,7 @@ public class InAppBrowser extends CordovaPlugin {
 		public void onLoadResource(WebView view, String url) {
 			if(url.contains("closeWebView")){
                 Log.d(LOG_TAG,"closeWebView");
-                closeDialog();
+                parseCloseWebView(url);
             }
             else if(url.contains("errorWebView")){
                 Log.d(LOG_TAG,"errorWebView");
@@ -1027,38 +1033,78 @@ public class InAppBrowser extends CordovaPlugin {
             }
 		}           
     }
-    
+
+    /** Custom events **/
+
+    private void parseCloseWebView(final String url) {
+        Log.d(LOG_TAG, "Resultado: " + url);
+
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("status", "ok");
+            obj.put("type", PARKING_CLOSE_EVENT);
+            obj.put("url", url);
+
+            sendUpdate(obj, false, PluginResult.Status.OK);
+
+        } catch (JSONException ex) {
+            Log.d(LOG_TAG, "Should never happen");
+        } 
+    }
+
     /**
      * Parsea los datos de un error en el acceso a Chauntry.
      * @param url
      */
     private void parseErrorWebView(final String url) {
-        Log.d(LOG_TAG, "parseErrorWebView: " + url);
-        //http://127.0.0.1/errorWebView__No%20se%20puede%20reservar%20para%20hoy%20o%20una%20fecha%20en%20el%20pasado.js
-        String message = url.substring(0, url.length() - 3);
-        String parts[] = message.split("__");
+        Log.d(LOG_TAG, "Resultado: " + url);
+
+        // http://127.0.0.1/errorWebView__No%20se%20puede%20reservar%20para%20hoy%20o%20una%20fecha%20en%20el%20pasado.js
         // Split:
         // 0 - Path: http://127.0.0.1/errorWebView
         // 1 - Message: No%20se%20puede%20reservar%20para%20hoy%20o%20una%20fecha%20en%20el%20pasado
         // System.out.println("FJORDAN: Mensaje: " + parts[1]);
-        closeDialog();
-        
-        StringBuffer sb = new StringBuffer();
-        sb.append("javascript:GestorResParking.mostrarError('");
-        sb.append(parts[1]);
-        sb.append("');");
-        this.webView.sendJavascript(sb.toString()); //Llamada al callback desde el plugin
-        }
+
+        String customUrl = url.substring(0, url.length() - 3);
+        String parts[] = customUrl.split("__");
+        if (parts.length == 2) {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("status", "ok");
+                obj.put("type", PARKING_SHOW_ERROR_EVENT);
+                obj.put("url", customUrl);
+                obj.put("message", parts[1]);
+
+                sendUpdate(obj, false, PluginResult.Status.OK);
+
+            } catch (JSONException ex) {
+                Log.d(LOG_TAG, "Should never happen");
+            } 
+
+        } else {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("status", "error");
+                obj.put("type", PARKING_SHOW_ERROR_EVENT);
+                obj.put("url", customUrl);
+
+                sendUpdate(obj, false, PluginResult.Status.ERROR);
+
+            } catch (JSONException ex) {
+                Log.d(LOG_TAG, "Should never happen");
+            } 
+        }            
+    }
     /**
      * Parsea los datos de la reserva e invoca al webview para que lo guarde
      * @param url
      */
-    private void parseQuoteOk(String url){
-        Log.d(LOG_TAG, "parseQuoteOK: " + url);
-        // http://127.0.0.1/quoteOk__fernando.jordan@connectis-ict.es__A0590__2014-02-19T18:59:00Z__2014-02-20T18:59:00Z__MAD1__MAD2__%201,00%20%E2%82%AC.js
-        url = url.substring(0, url.length()-3);
-        // url = http://127.0.0.1/quoteOk__fernando.jordan@connectis-ict.es__A0590__2014-02-19T18:59:00Z__2014-02-20T18:59:00Z__MAD8__MAD4__MAD2__%201,00%20%E2%82%AC
-        String parts[] = url.split("__");
+    private void parseQuoteOk(final String url){
+        Log.d(LOG_TAG, "Resultado: " + url);
+        // url = http://127.0.0.1/quoteOk__fernando.jordan@connectis-ict.es__A0590__2014-02-19T18:59:00Z__2014-02-20T18:59:00Z__MAD1__MAD2__%201,00%20%E2%82%AC.js
+        String customUrl = url.substring(0, url.length()-3);
+        // customUrl = http://127.0.0.1/quoteOk__fernando.jordan@connectis-ict.es__A0590__2014-02-19T18:59:00Z__2014-02-20T18:59:00Z__MAD8__MAD4__MAD2__%201,00%20%E2%82%AC
+        String parts[] = customUrl.split("__");        
         // Split:
         // 0 - Path: 			 http://127.0.0.1/quoteOk
         // 1 - Mail: 			 fernando.jordan@connectis-ict.es
@@ -1069,50 +1115,79 @@ public class InAppBrowser extends CordovaPlugin {
         // 6 - Terminal:         MAD4
         // 7 - AirPort: 		 MAD2
         // 8 - Cost: 			 %201,00%20%E2%82%AC
-        String mail      = parts[1];
-        String reference = parts[2]; // Localizador
-        String dateIn    = parts[3];
-        String dateOut   = parts[4];
-        String parkingId = parts[5];
-        String term      = parts[6]; // RES_NAME ????
-        String airport   = parts[7];
-        String cost      = parts[8];
-        
-        
-        StringBuffer cb = new StringBuffer();
-        cb.append("javascript:GestorResParking.guardarReserva('");
-        cb.append(mail).append("','");
-        cb.append(reference).append("','");
-        cb.append(dateIn).append("','");
-        cb.append(dateOut).append("','");
-        cb.append(parkingId).append("','");
-        cb.append(term).append("','");
-        cb.append(airport).append("','");
-        cb.append(cost);
-        cb.append("');");
-        this.webView.sendJavascript(cb.toString()); //Llamada al callback desde el plugin
-        closeDialog();
+        if (parts.length == 9) {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("status",    "ok");
+                obj.put("type",      PARKING_SAVE_EVENT);
+                obj.put("url",       customUrl);
+                obj.put("mail",      parts[1]);
+                obj.put("reference", parts[2]);
+                obj.put("dateIn",    parts[3]);
+                obj.put("dateOut",   parts[4]);
+                obj.put("parkingId", parts[5]);
+                obj.put("term",      parts[6]);
+                obj.put("airport",   parts[7]);
+                obj.put("cost",      parts[8]);
+
+                sendUpdate(obj, false, PluginResult.Status.OK);
+
+            } catch (JSONException ex) {
+                Log.d(LOG_TAG, "Should never happen");
+            } 
+
+        } else {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("status", "error");
+                obj.put("type", PARKING_SAVE_EVENT);
+                obj.put("url", customUrl);
+
+                sendUpdate(obj, false, PluginResult.Status.ERROR);
+
+            } catch (JSONException ex) {
+                Log.d(LOG_TAG, "Should never happen");
+            } 
+        }
     }
     
     /**
      * Parsea los datos de la cancelacion e invoca al webview para que la borre
      * @param url
      */
-    private void parseCancelledOk(String url){
-        Log.d(LOG_TAG, "parseCancelledOk: " + url);
-        url = url.substring(0, url.length()-3);
-        String parts[]   = url.split("__");
-        String mail      = parts[1];
-        String reference = parts[2];
-        String parkingId = parts[3];
-        
-        StringBuffer cb = new StringBuffer();
-        cb.append("javascript:GestorResParking.cancelarReserva('");
-        cb.append(mail).append("','");
-        cb.append(reference).append("','");
-        cb.append(parkingId);
-        cb.append("');");
-        this.webView.sendJavascript(cb.toString()); //Llamada al callback desde el plugin
-        closeDialog();
+    private void parseCancelledOk(final String url){
+        Log.d(LOG_TAG, "Resultado: " + url);
+
+        String customUrl = url.substring(0, url.length()-3);
+        String parts[]   = customUrl.split("__");
+        if (parts.length == 4) {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("status",    "ok");
+                obj.put("type",      PARKING_CANCEL_EVENT);
+                obj.put("url",       customUrl);
+                obj.put("mail",      parts[1]);
+                obj.put("reference", parts[2]);                
+                obj.put("parkingId", parts[3]);
+                
+                sendUpdate(obj, false, PluginResult.Status.OK);
+
+            } catch (JSONException ex) {
+                Log.d(LOG_TAG, "Should never happen");
+            } 
+
+        } else {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("status", "error");
+                obj.put("type", PARKING_CANCEL_EVENT);
+                obj.put("url", customUrl);
+
+                sendUpdate(obj, false, PluginResult.Status.ERROR);
+
+            } catch (JSONException ex) {
+                Log.d(LOG_TAG, "Should never happen");
+            } 
+        }
     }
 }
